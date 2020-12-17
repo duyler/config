@@ -1,0 +1,36 @@
+{
+    "name": "jine/config",
+    "type": "library",
+    "description": "Jine config file loader",
+    "license": "MIT",
+    "keywords": [
+        "config"
+    ],
+    "authors": [
+        {
+            "name": "Mikhail Ilinsky",
+            "email": "mail@milinsky.ru"
+        }
+    ],
+    "support": {
+        "docs": "https://framework.jine.io/docs/config/"
+    },
+    "require": {
+        "php": "^8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9"
+    },
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "Jine\\Config\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Jine\\EventBusBundle\\Test\\": ["tests/"]
+        }
+    }
+}
+
