@@ -6,39 +6,21 @@ namespace Jine\Config;
 
 class Config
 {
-    private string $rootPath;
+    private ConfigProviderInterface $provider;
 
-    private string $configDir;
-
-    private array $configures = [];
-
-    public function __construct(string $rootPath, string $configDir)
+    public function __construct(ConfigProviderInterface $provider)
     {
-        $this->rootPath = $rootPath;
-        $this->configDir = $rootPath . '/' . $configDir;
+        $this->provider = $provider;
     }
 
-    public function getAll(string $configName) : array
+    public function get(string $configFile, string $configName): string | int | float | bool | null
     {
-        if (array_key_exists($configName, $this->configures)) {
-            return $this->configures[$configName];
-        }
-
-        $configPath = $this->configDir . '/' . str_replace('.', '/', $configName) . '.php';
-
-        if (is_file($configPath)) {
-            $this->configures[$configName] = include $configPath;
-            return $this->configures[$configName];
-        }
-        return [];
-    }
-
-    public function get(string $configFile, string $configName)
-    {
-        $configArray = $this->getAll($configFile);
+        $configArray = $this->provider->getAll($configFile);
 
         if (array_key_exists($configName, $configArray)) {
             return $configArray[$configName];
         }
+
+        return null;
     }
 }
