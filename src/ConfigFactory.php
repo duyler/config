@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Jine\Config;
+namespace Duyler\Config;
 
-use Jine\Config\Provider\FileConfigProvider;
+use Duyler\Config\Provider\FileConfigProvider;
 
 class ConfigFactory
 {

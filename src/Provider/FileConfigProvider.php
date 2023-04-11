@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Jine\Config\Provider;
+namespace Duyler\Config\Provider;
 
-use Jine\Config\ConfigProviderInterface;
+use Duyler\Config\ConfigProviderInterface;
 
 class FileConfigProvider implements ConfigProviderInterface
 {
