@@ -8,14 +8,13 @@ use Duyler\Config\Provider\FileConfigProvider;
 
 class ConfigFactory
 {
-    public function create(string $configDir): Config
+    public function create(string $configDir, array $env = []): Config
     {
-        $provider = new FileConfigProvider($configDir);
-        return new Config($provider);
+        return $this->createCustom(new FileConfigProvider($configDir), $env);
     }
 
-    public function createCustom(ConfigProviderInterface $provider): Config
+    public function createCustom(ConfigProviderInterface $provider, array $env = []): Config
     {
-        return new Config($provider);
+        return new Config($provider, $env);
     }
 }
