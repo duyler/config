@@ -6,21 +6,28 @@ namespace Duyler\Config;
 
 readonly class Config
 {
-    public function __construct(private ConfigProviderInterface $provider)
+    public const PROJECT_ROOT = 'PROJECT_ROOT';
+
+    public function __construct(private ConfigProviderInterface $configProvider, private array $env = [])
     {
     }
 
     public function get(
         string $configFile,
         string $configName,
-        string|int|float|bool|null $default = null
-    ): string|int|float|bool|null {
-        $configArray = $this->provider->getAll($configFile);
+        string|int|float|bool|null|array $default = null
+    ): string|int|float|bool|null|array {
+        $configArray = $this->configProvider->getAll($configFile);
 
         if (array_key_exists($configName, $configArray)) {
             return $configArray[$configName];
         }
 
-        return $default;
+        return $this->env(strtoupper($configName), $default);
+    }
+
+    public function env(string $key, string|bool|int|float|null $default = null): string|bool|int|float|null|array
+    {
+        return $this->env[$key] ?? $default;
     }
 }
