@@ -10,17 +10,23 @@ use RecursiveIteratorIterator;
 use RuntimeException;
 use SplFileInfo;
 
-class Config
+class Config implements ConfigInterface
 {
     public const PROJECT_ROOT = 'PROJECT_ROOT';
 
     private array $objects = [];
+    private array $mainLog;
+    private array $repeatedLog;
 
     public function __construct(
         private string $configDir,
         private readonly array $env = [],
         private array $vars = [],
     ) {
+
+        $this->repeatedLog = ['named' => [], 'index' => []];
+        $this->mainLog = ['named' => [], 'index' => []];
+
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($this->configDir, FilesystemIterator::SKIP_DOTS),
             RecursiveIteratorIterator::SELF_FIRST,
@@ -30,7 +36,7 @@ class Config
         $configCollector = new class () {
             public function collect(string $path, Config $config): array
             {
-                return require_once $path;
+                return require $path;
             }
         };
 
@@ -60,18 +66,43 @@ class Config
                 }
             }
         }
+
+        foreach ($this->repeatedLog['named'] as $configFile => $configName) {
+            $config = $this->fakeReadFile($configFile);
+            foreach ($config as $key => $value) {
+                if (class_exists($key)) {
+                    $this->objects[$key] = new $key(...$value);
+                } else {
+                    $this->vars[$configFile] = $config;
+                }
+            }
+        }
+
+        $this->repeatedLog = ['named' => [], 'index' => []];
+        $this->mainLog = ['named' => [], 'index' => []];
     }
 
-    public function get(
-        string $configFile,
-        string $configName,
-        mixed $default = null,
-    ): mixed {
+    public function get(string $configFile, string $configName, mixed $default = null): mixed
+    {
         if (array_key_exists($configFile, $this->vars)) {
             return $this->vars[$configFile][$configName] ?? null;
         }
 
-        $configArray = $this->readFile($configFile);
+        if (in_array($configName, $this->mainLog['named']) || in_array($configName, $this->mainLog['index'])) {
+            $this->repeatedLog['named'][$configFile] = $configName;
+            $this->repeatedLog['index'][] = $configFile . '.' . $configName;
+        } else {
+            $this->mainLog['named'][$configFile] = $configName;
+            $this->mainLog['index'][] = $configFile . '.' . $configName;
+        }
+
+        if (count($this->repeatedLog['named']) === count($this->mainLog['named'])
+            || count($this->repeatedLog['index']) === count($this->mainLog['index'])
+        ) {
+            return $default;
+        } else {
+            $configArray = $this->readFile($configFile);
+        }
 
         if (array_key_exists($configName, $configArray)) {
             $this->vars[$configFile] = $configArray;
@@ -79,6 +110,51 @@ class Config
         }
 
         return $default;
+    }
+
+    public function readFile(string $configFile): array
+    {
+        $configPath = $this->configDir . '/' . str_replace('.', '/', $configFile) . '.php';
+
+        $configCollector = new class () {
+            public function collect(string $configPath, Config $config): array
+            {
+                return require $configPath;
+            }
+        };
+
+        return $configCollector->collect($configPath, $this);
+    }
+
+    private function fakeReadFile(string $configFile): array
+    {
+        $configPath = $this->configDir . '/' . str_replace('.', '/', $configFile) . '.php';
+
+        $fakeConfig = new class ($this, $this->repeatedLog['named'], $this->vars) {
+            public function __construct(private Config $config, private array $repeatedLog, private array $vars) {}
+            public function get(string $configFile, string $configName, mixed $default = null): mixed
+            {
+                if (in_array($configName, $this->repeatedLog)) {
+                    return $this->vars[$configFile][$configName] ?? $default;
+                }
+
+                return $this->config->get($configFile, $configName, $default);
+            }
+
+            public function env(string $key, mixed $default = null, bool $raw = false): mixed
+            {
+                return $this->config->env($key, $default, $raw);
+            }
+        };
+
+        $configCollector = new class () {
+            public function collect(string $configPath, mixed $config): array
+            {
+                return require $configPath;
+            }
+        };
+
+        return $configCollector->collect($configPath, $fakeConfig);
     }
 
     public function env(string $key, mixed $default = null, bool $raw = false): mixed
@@ -96,21 +172,6 @@ class Config
             is_string($value) => $value,
             default => $default
         };
-    }
-
-    public function readFile(string $configFile): array
-    {
-        var_dump($configFile);
-        $configPath = $this->configDir . '/' . str_replace('.', '/', $configFile) . '.php';
-
-        $configCollector = new class () {
-            public function collect(string $configPath, Config $config): array
-            {
-                return require $configPath;
-            }
-        };
-
-        return $configCollector->collect($configPath, $this);
     }
 
     public function getObjects(): array
