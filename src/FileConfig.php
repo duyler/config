@@ -5,23 +5,22 @@ declare(strict_types=1);
 namespace Duyler\Config;
 
 use FilesystemIterator;
+use Override;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
 use SplFileInfo;
 
-class Config implements ConfigInterface
+class FileConfig implements ConfigInterface
 {
-    public const PROJECT_ROOT = 'PROJECT_ROOT';
-
-    private array $objects = [];
     private array $mainLog;
     private array $repeatedLog;
 
     public function __construct(
-        private string $configDir,
-        private readonly array $env = [],
-        private array $vars = [],
+        private readonly string           $configDir,
+        private readonly array            $env = [],
+        private array                     $vars = [],
+        private ?ConfigCollectorInterface $externalConfigCollector = null,
     ) {
 
         $this->repeatedLog = ['named' => [], 'index' => []];
@@ -34,7 +33,7 @@ class Config implements ConfigInterface
         );
 
         $configCollector = new class () {
-            public function collect(string $path, Config $config): array
+            public function collect(string $path, FileConfig $config): array
             {
                 return require $path;
             }
@@ -57,11 +56,8 @@ class Config implements ConfigInterface
                     $config = $configCollector->collect($path, $this);
 
                     foreach ($config as $key => $value) {
-                        if (class_exists($key)) {
-                            $this->objects[$key] = new $key(...$value);
-                        } else {
-                            $this->vars[$configName] = $config;
-                        }
+                        $this->vars[$configName] = $config;
+                        $this->externalConfigCollector?->collect($key, $value);
                     }
                 }
             }
@@ -70,11 +66,8 @@ class Config implements ConfigInterface
         foreach ($this->repeatedLog['named'] as $configFile => $configName) {
             $config = $this->fakeReadFile($configFile);
             foreach ($config as $key => $value) {
-                if (class_exists($key)) {
-                    $this->objects[$key] = new $key(...$value);
-                } else {
-                    $this->vars[$configFile] = $config;
-                }
+                $this->vars[$configFile] = $config;
+                $this->externalConfigCollector?->collect($key, $value);
             }
         }
 
@@ -82,6 +75,7 @@ class Config implements ConfigInterface
         $this->mainLog = ['named' => [], 'index' => []];
     }
 
+    #[Override]
     public function get(string $configFile, string $configName, mixed $default = null): mixed
     {
         if (array_key_exists($configFile, $this->vars)) {
@@ -112,12 +106,16 @@ class Config implements ConfigInterface
         return $default;
     }
 
-    public function readFile(string $configFile): array
+    private function readFile(string $configFile): array
     {
         $configPath = $this->configDir . '/' . str_replace('.', '/', $configFile) . '.php';
 
+        if (is_file($configFile) === false) {
+            return [];
+        }
+
         $configCollector = new class () {
-            public function collect(string $configPath, Config $config): array
+            public function collect(string $configPath, FileConfig $config): array
             {
                 return require $configPath;
             }
@@ -131,7 +129,7 @@ class Config implements ConfigInterface
         $configPath = $this->configDir . '/' . str_replace('.', '/', $configFile) . '.php';
 
         $fakeConfig = new class ($this, $this->repeatedLog['named'], $this->vars) {
-            public function __construct(private Config $config, private array $repeatedLog, private array $vars) {}
+            public function __construct(private FileConfig $config, private array $repeatedLog, private array $vars) {}
             public function get(string $configFile, string $configName, mixed $default = null): mixed
             {
                 if (in_array($configName, $this->repeatedLog)) {
@@ -157,6 +155,7 @@ class Config implements ConfigInterface
         return $configCollector->collect($configPath, $fakeConfig);
     }
 
+    #[Override]
     public function env(string $key, mixed $default = null, bool $raw = false): mixed
     {
         if ($raw) {
@@ -174,12 +173,8 @@ class Config implements ConfigInterface
         };
     }
 
-    public function getObjects(): array
-    {
-        return $this->objects;
-    }
-
-    public function writeFile(string $filePath, array $data): Config
+    #[Override]
+    public function writeFile(string $filePath, array $data): FileConfig
     {
         $path = explode('.', $filePath);
         $fileName = array_pop($path);
@@ -199,21 +194,24 @@ class Config implements ConfigInterface
 
             declare(strict_types=1);
             
-            use Duyler\Config\Config;
+            use Duyler\Config\FileConfig;
             
-            /** @var Config \$config */
+            /**
+             * @var FileConfig \$config
+             * @var string \$path
+             */
             return {$data};
 
             EOF;
 
-        $file = $dirPath . $fileName . '.php';
+        $file = $dirPath . '/' . $fileName . '.php';
 
         if (is_file($file)) {
             throw new RuntimeException('File already exists: ' . $file);
         }
 
         file_put_contents(
-            $dirPath . '/' . $fileName . '.php',
+            $file,
             $fileContent,
         );
 
