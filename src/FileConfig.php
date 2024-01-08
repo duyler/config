@@ -17,9 +17,9 @@ class FileConfig implements ConfigInterface
     private array $repeatedLog;
 
     public function __construct(
-        private readonly string           $configDir,
-        private readonly array            $env = [],
-        private array                     $vars = [],
+        private readonly string $configDir,
+        private readonly array $env = [],
+        private array $vars = [],
         private ?ConfigCollectorInterface $externalConfigCollector = null,
     ) {
 
