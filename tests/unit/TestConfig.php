@@ -4,20 +4,25 @@ declare(strict_types=1);
 
 namespace Duyler\tests\unit;
 
-use Duyler\Config\Config;
+use Duyler\Config\FileConfig;
 use Duyler\Config\Provider\FileConfigProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @internal
+ *
+ * @coversNothing
+ */
 class TestConfig extends TestCase
 {
     private FileConfigProvider $fileConfigProvider;
-    private Config $config;
+    private FileConfig $config;
 
     protected function setUp(): void
     {
         $this->fileConfigProvider = $this->createMock(FileConfigProvider::class);
-        $this->config = new Config($this->fileConfigProvider);
+        $this->config = new FileConfig($this->fileConfigProvider);
         parent::setUp();
     }
 
