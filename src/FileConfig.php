@@ -11,7 +11,7 @@ use RecursiveIteratorIterator;
 use RuntimeException;
 use SplFileInfo;
 
-class FileConfig implements ConfigInterface
+final class FileConfig implements ConfigInterface
 {
     private array $mainLog;
     private array $repeatedLog;
@@ -20,6 +20,7 @@ class FileConfig implements ConfigInterface
         private readonly string $configDir,
         private readonly array $env = [],
         private array $vars = [],
+        private readonly string $root = './../',
         private ?ConfigCollectorInterface $externalConfigCollector = null,
     ) {
 
@@ -29,10 +30,10 @@ class FileConfig implements ConfigInterface
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($this->configDir, FilesystemIterator::SKIP_DOTS),
             RecursiveIteratorIterator::SELF_FIRST,
-            RecursiveIteratorIterator::CATCH_GET_CHILD
+            RecursiveIteratorIterator::CATCH_GET_CHILD,
         );
 
-        $configCollector = new class () {
+        $configCollector = new class {
             public function collect(string $path, FileConfig $config): array
             {
                 return require $path;
@@ -114,7 +115,7 @@ class FileConfig implements ConfigInterface
             return [];
         }
 
-        $configCollector = new class () {
+        $configCollector = new class {
             public function collect(string $configPath, FileConfig $config): array
             {
                 return require $configPath;
@@ -145,7 +146,7 @@ class FileConfig implements ConfigInterface
             }
         };
 
-        $configCollector = new class () {
+        $configCollector = new class {
             public function collect(string $configPath, mixed $config): array
             {
                 return require $configPath;
@@ -169,7 +170,7 @@ class FileConfig implements ConfigInterface
             'false' === $value => false,
             is_numeric($value) => intval($value),
             is_string($value) => $value,
-            default => $default
+            default => $default,
         };
     }
 
@@ -216,5 +217,11 @@ class FileConfig implements ConfigInterface
         );
 
         return $this;
+    }
+
+    #[Override]
+    public function path(string $dir = ''): string
+    {
+        return rtrim($this->root, '/') . '/' . trim($dir, '/');
     }
 }
