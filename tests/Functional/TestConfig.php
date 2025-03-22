@@ -10,14 +10,12 @@ use PHPUnit\Framework\TestCase;
 
 class TestConfig extends TestCase
 {
-    private FileConfig $config;
-
     #[Test]
     public function get_with_file(): void
     {
-        $this->config = new FileConfig(__DIR__ . '/Support/config', [], [], __DIR__ . '/Support');
-        $value = $this->config->get('test', 'foo');
+        $config = new FileConfig('config', 'rootfile');
+        $value = $config->get('test', 'foo');
 
-        self::assertEquals('bar', $value);
+        $this->assertEquals('bar', $value);
     }
 }
