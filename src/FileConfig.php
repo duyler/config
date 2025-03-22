@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Duyler\Config;
 
+use Dotenv\Dotenv;
 use FilesystemIterator;
+use LogicException;
 use Override;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -15,14 +17,21 @@ final class FileConfig implements ConfigInterface
 {
     private array $mainLog;
     private array $repeatedLog;
+    private string $projectRootDir;
+    private string $configDir;
+    private array $env;
+    private array $vars = [];
 
     public function __construct(
-        private readonly string $configDir,
-        private readonly array $env = [],
-        private array $vars = [],
-        private readonly string $root = './../',
+        string $configDir,
+        private readonly string $rootFile,
         private ?ConfigCollectorInterface $externalConfigCollector = null,
     ) {
+        $this->projectRootDir = $this->getRootDir();
+        $this->configDir = $this->projectRootDir . $configDir;
+
+        $env = Dotenv::createImmutable($this->projectRootDir);
+        $this->env = $env->safeLoad() + $_ENV;
 
         $this->repeatedLog = ['named' => [], 'index' => []];
         $this->mainLog = ['named' => [], 'index' => []];
@@ -74,6 +83,22 @@ final class FileConfig implements ConfigInterface
 
         $this->repeatedLog = ['named' => [], 'index' => []];
         $this->mainLog = ['named' => [], 'index' => []];
+    }
+
+    private function getRootDir(): string
+    {
+        $dir = dirname(__DIR__);
+
+        while (!is_file($dir . '/' . $this->rootFile)) {
+
+            $dir = dirname($dir);
+
+            if (!is_dir($dir)) {
+                throw new LogicException('Cannot auto-detect project dir');
+            }
+        }
+
+        return $dir . '/';
     }
 
     #[Override]
@@ -222,6 +247,6 @@ final class FileConfig implements ConfigInterface
     #[Override]
     public function path(string $dir = ''): string
     {
-        return rtrim($this->root, '/') . '/' . trim($dir, '/');
+        return rtrim($this->projectRootDir, '/') . '/' . trim($dir, '/');
     }
 }
