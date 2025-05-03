@@ -1,4 +1,4 @@
-[![codecov](https://codecov.io/gh/duyler/config/graph/badge.svg?token=Z60T9EMXD6)](https://codecov.io/gh/duyler/event-bus)
+[![codecov](https://codecov.io/gh/duyler/config/graph/badge.svg?token=Z60T9EMXD6)](https://codecov.io/gh/duyler/config)
 ![PHP Version](https://img.shields.io/packagist/dependency-v/duyler/config/php?version=dev-main)
 # Duyler Config
 
