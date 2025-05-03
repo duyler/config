@@ -31,7 +31,7 @@ final class FileConfig implements ConfigInterface
         $this->configDir = $this->projectRootDir . $configDir;
 
         $env = Dotenv::createImmutable($this->projectRootDir);
-        $this->env = $env->safeLoad() + $_ENV;
+        $this->env = $env->safeLoad();
 
         $this->repeatedLog = ['named' => [], 'index' => []];
         $this->mainLog = ['named' => [], 'index' => []];
@@ -184,11 +184,13 @@ final class FileConfig implements ConfigInterface
     #[Override]
     public function env(string $key, mixed $default = null, bool $raw = false): mixed
     {
+        $this->env = $this->env + $_ENV;
+
         if ($raw) {
             return $this->env[$key] ?? $default;
         }
 
-        $value = $this->env[$key];
+        $value = $this->env[$key] ?? $default;
         return match (true) {
             'null' === $value => null,
             'true' === $value => true,
