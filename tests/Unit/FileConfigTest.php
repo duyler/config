@@ -19,7 +19,7 @@ class FileConfigTest extends TestCase
         $this->testConfigDir = 'tests/Unit/fixtures/config';
         $this->config = new FileConfig(
             configDir: $this->testConfigDir,
-            rootFile: 'composer.json'
+            rootFile: 'composer.json',
         );
     }
 
@@ -119,10 +119,10 @@ class FileConfigTest extends TestCase
     {
         // First call should load from file
         $value1 = $this->config->get('app', 'name');
-        
+
         // Second call should use cached value
         $value2 = $this->config->get('app', 'name');
-        
+
         $this->assertEquals($value1, $value2);
     }
-} 
+}

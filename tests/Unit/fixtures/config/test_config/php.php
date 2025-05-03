@@ -9,5 +9,5 @@ use Duyler\Config\FileConfig;
  * @var string $path
  */
 return [
-  'test_key' => 'test_value',
+    'test_key' => 'test_value',
 ];
