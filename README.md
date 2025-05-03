@@ -1,4 +1,5 @@
-![build](https://github.com/duyler/config/workflows/build/badge.svg)
+[![codecov](https://codecov.io/gh/duyler/config/graph/badge.svg?token=Z60T9EMXD6)](https://codecov.io/gh/duyler/event-bus)
+![PHP Version](https://img.shields.io/packagist/dependency-v/duyler/config/php?version=dev-main)
 # Duyler Config
 
 ### Description
