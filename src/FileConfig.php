@@ -202,51 +202,6 @@ final class FileConfig implements ConfigInterface
     }
 
     #[Override]
-    public function writeFile(string $filePath, array $data): FileConfig
-    {
-        $path = explode('.', $filePath);
-        $fileName = array_pop($path);
-
-        $dirPath = $this->configDir . '/' . implode('/', $path);
-
-        if (!empty($dirPath) && !is_dir($dirPath)) {
-            mkdir($dirPath, 0o755, true);
-        }
-
-        $data = var_export($data, true);
-
-        $data = str_replace(['array (', ')'], ['[', ']'], $data);
-
-        $fileContent = <<<EOF
-            <?php
-
-            declare(strict_types=1);
-            
-            use Duyler\Config\FileConfig;
-            
-            /**
-             * @var FileConfig \$config
-             * @var string \$path
-             */
-            return {$data};
-
-            EOF;
-
-        $file = $dirPath . '/' . $fileName . '.php';
-
-        if (is_file($file)) {
-            throw new RuntimeException('File already exists: ' . $file);
-        }
-
-        file_put_contents(
-            $file,
-            $fileContent,
-        );
-
-        return $this;
-    }
-
-    #[Override]
     public function path(string $dir = ''): string
     {
         return rtrim($this->projectRootDir, '/') . '/' . trim($dir, '/');
