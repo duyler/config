@@ -1,4 +1,5 @@
-[![codecov](https://codecov.io/gh/duyler/config/graph/badge.svg?token=Z60T9EMXD6)](https://codecov.io/gh/duyler/config)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=duyler_config&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=duyler_config)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=duyler_config&metric=coverage)](https://sonarcloud.io/summary/new_code?id=duyler_config)
 ![PHP Version](https://img.shields.io/packagist/dependency-v/duyler/config/php?version=dev-main)
 # Duyler Config
 
