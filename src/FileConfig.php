@@ -10,7 +10,6 @@ use LogicException;
 use Override;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use RuntimeException;
 use SplFileInfo;
 
 final class FileConfig implements ConfigInterface
