@@ -7,7 +7,6 @@ namespace Duyler\Config\Test\Unit;
 use Duyler\Config\FileConfig;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 class FileConfigTest extends TestCase
 {
@@ -72,21 +71,6 @@ class FileConfigTest extends TestCase
         $this->assertEquals('true', $value);
     }
 
-    //#[Test]
-    //public function it_should_write_config_file(): void
-    //{
-    //    $filePath = 'test_config.php';
-    //    $data = ['test_key' => 'test_value'];
-    //
-    //    $config = $this->config->writeFile($filePath, $data);
-    //
-    //    $this->assertInstanceOf(FileConfig::class, $config);
-    //    $this->assertFileExists($this->testConfigDir . '/' . $filePath);
-    //
-    //    // Cleanup
-    //    unlink($this->testConfigDir . '/' . $filePath);
-    //}
-
     #[Test]
     public function it_should_get_project_path(): void
     {
@@ -102,17 +86,6 @@ class FileConfigTest extends TestCase
         $path = $this->config->path($subDir);
         $this->assertStringEndsWith($subDir, $path);
     }
-
-    //#[Test]
-    //public function it_should_throw_exception_when_root_file_not_found(): void
-    //{
-    //    $this->expectException(RuntimeException::class);
-    //
-    //    new FileConfig(
-    //        configDir: $this->testConfigDir,
-    //        rootFile: 'non_existent_file.json'
-    //    );
-    //}
 
     #[Test]
     public function it_should_cache_config_values(): void

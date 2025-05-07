@@ -185,11 +185,12 @@ final class FileConfig implements ConfigInterface
     {
         $this->env = $this->env + $_ENV;
 
+        $value = $this->env[$key] === null || $this->env[$key] === '' ? $default : $this->env[$key];
+
         if ($raw) {
-            return $this->env[$key] ?? $default;
+            return $value;
         }
 
-        $value = $this->env[$key] ?? $default;
         return match (true) {
             'null' === $value => null,
             'true' === $value => true,
