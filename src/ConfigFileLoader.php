@@ -58,7 +58,7 @@ final class ConfigFileLoader
             try {
                 $configs[$configName] = $this->loadFile($path, $configContext);
             } catch (Throwable $e) {
-                if ($configContext === null) {
+                if ($configContext === null && str_contains($e->getMessage(), 'on null')) {
                     continue;
                 }
 
