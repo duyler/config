@@ -114,7 +114,7 @@ final class ConfigFileLoader
             $result = require $filePath;
             return $result;
         };
-        
+
         $result = $loader($path, $config);
 
         if (!is_array($result)) {
@@ -125,7 +125,7 @@ final class ConfigFileLoader
 
         /** @var array<string, mixed> $validatedResult */
         $validatedResult = $result;
-        
+
         return $validatedResult;
     }
 

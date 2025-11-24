@@ -39,7 +39,7 @@ final class ConfigCache
 
         /** @var array<string, array<string, mixed>> $validatedData */
         $validatedData = $data;
-        
+
         return $validatedData;
     }
 
