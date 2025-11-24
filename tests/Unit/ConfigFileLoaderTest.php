@@ -58,4 +58,28 @@ class ConfigFileLoaderTest extends TestCase
 
         $this->loader->loadAll('/non/existent/path');
     }
+
+    #[Test]
+    public function it_should_load_nested_config_files(): void
+    {
+        $configs = $this->loader->loadAll($this->testConfigPath, null);
+
+        $this->assertArrayHasKey('test_config.php', $configs);
+        $this->assertIsArray($configs['test_config.php']);
+        $this->assertArrayHasKey('test_key', $configs['test_config.php']);
+    }
+
+    #[Test]
+    public function it_should_skip_non_php_files(): void
+    {
+        $configs = $this->loader->loadAll($this->testConfigPath, null);
+
+        $this->assertIsArray($configs);
+        $this->assertNotEmpty($configs);
+
+        foreach ($configs as $configName => $configData) {
+            $this->assertIsString($configName);
+            $this->assertIsArray($configData);
+        }
+    }
 }

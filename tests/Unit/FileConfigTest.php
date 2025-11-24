@@ -215,4 +215,60 @@ class FileConfigTest extends TestCase
         $this->assertEquals('from_b', $referenceFromA);
         $this->assertEquals('default_from_a', $referenceFromB);
     }
+
+    #[Test]
+    public function it_should_return_config_dir(): void
+    {
+        $configDir = $this->config->configDir();
+
+        $this->assertEquals($this->testConfigDir, $configDir);
+    }
+
+    #[Test]
+    public function it_should_return_root_file(): void
+    {
+        $rootFile = $this->config->rootFile();
+
+        $this->assertEquals('composer.json', $rootFile);
+    }
+
+    #[Test]
+    public function it_should_use_cache_when_enabled(): void
+    {
+        $cacheDir = sys_get_temp_dir() . '/duyler_config_test_' . uniqid();
+
+        $config1 = new FileConfig(
+            configDir: $this->testConfigDir,
+            rootFile: 'composer.json',
+            cacheDir: $cacheDir,
+            useCache: true,
+        );
+
+        $config1->warmup();
+
+        $config2 = new FileConfig(
+            configDir: $this->testConfigDir,
+            rootFile: 'composer.json',
+            cacheDir: $cacheDir,
+            useCache: true,
+        );
+
+        $value = $config2->get('app', 'name');
+
+        $this->assertEquals('TestApp', $value);
+
+        $config1->clearCache();
+
+        if (is_dir($cacheDir)) {
+            rmdir($cacheDir);
+        }
+    }
+
+    #[Test]
+    public function it_should_return_false_when_clearing_cache_without_cache_dir(): void
+    {
+        $result = $this->config->clearCache();
+
+        $this->assertFalse($result);
+    }
 }
