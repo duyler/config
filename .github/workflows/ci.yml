@@ -64,6 +64,9 @@ jobs:
       - name: Run PHP CS Fixer
         run: vendor/bin/php-cs-fixer check --diff -v
 
+      - name: Run Psalm
+        run: vendor/bin/psalm --shepherd
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v4
         env:

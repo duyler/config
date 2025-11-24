@@ -21,7 +21,8 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^10.0",
-        "friendsofphp/php-cs-fixer": "^3.77"
+        "friendsofphp/php-cs-fixer": "^3.77",
+        "vimeo/psalm": "^6.13"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,

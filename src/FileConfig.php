@@ -4,206 +4,215 @@ declare(strict_types=1);
 
 namespace Duyler\Config;
 
-use Dotenv\Dotenv;
-use FilesystemIterator;
-use LogicException;
 use Override;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
+use RuntimeException;
 
 final class FileConfig implements ConfigInterface
 {
-    private array $mainLog;
-    private array $repeatedLog;
     private string $projectRootDir;
-    private string $configDir;
-    private array $env;
+    private string $configPath;
+    private ProjectRootFinder $rootFinder;
+    private ConfigFileLoader $fileLoader;
+    private EnvironmentResolver $envResolver;
+
+    /** @var array<string, array<string, mixed>> */
     private array $vars = [];
 
+    /** @var array<string, bool> */
+    private array $loading = [];
+
+    /**
+     * @param string $configDir
+     * @param string $rootFile
+     * @param ConfigCollectorInterface|null $externalConfigCollector
+     * @param string|null $cacheDir
+     * @param bool $useCache
+     */
     public function __construct(
-        string $configDir,
+        private string $configDir,
         private readonly string $rootFile,
         private ?ConfigCollectorInterface $externalConfigCollector = null,
+        private ?string $cacheDir = null,
+        private bool $useCache = false,
     ) {
-        $this->projectRootDir = $this->getRootDir();
-        $this->configDir = $this->projectRootDir . $configDir;
+        $this->rootFinder = new ProjectRootFinder();
+        $this->fileLoader = new ConfigFileLoader();
 
-        $env = Dotenv::createImmutable($this->projectRootDir);
-        $this->env = $env->safeLoad();
+        $this->projectRootDir = $this->rootFinder->find($this->rootFile, dirname(__DIR__));
+        $this->configPath = $this->projectRootDir . $configDir;
 
-        $this->repeatedLog = ['named' => [], 'index' => []];
-        $this->mainLog = ['named' => [], 'index' => []];
+        $this->envResolver = new EnvironmentResolver($this->projectRootDir);
 
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($this->configDir, FilesystemIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST,
-            RecursiveIteratorIterator::CATCH_GET_CHILD,
-        );
+        if ($this->useCache && $this->cacheDir !== null) {
+            $cache = new ConfigCache($this->cacheDir);
 
-        $configCollector = new class {
-            public function collect(string $path, FileConfig $config): array
-            {
-                return require $path;
-            }
-        };
-
-        /**
-         * @var iterable $iterator
-         * @var string $path
-         * @var SplFileInfo $dir
-         * */
-        foreach ($iterator as $path => $dir) {
-            if ($dir->isFile()) {
-                if ('php' === strtolower($dir->getExtension())) {
-                    $configName = str_replace('/', '.', str_replace([$this->configDir . '/', '.php'], ['', ''], $path));
-
-                    if (array_key_exists($configName, $this->vars)) {
-                        continue;
-                    }
-
-                    $config = $configCollector->collect($path, $this);
-
-                    foreach ($config as $key => $value) {
-                        $this->vars[$configName] = $config;
-                        $this->externalConfigCollector?->collect($key, $value);
-                    }
-                }
+            if ($cache->has()) {
+                $this->vars = $cache->load();
+                return;
             }
         }
-
-        foreach ($this->repeatedLog['named'] as $configFile => $configName) {
-            $config = $this->fakeReadFile($configFile);
-            foreach ($config as $key => $value) {
-                $this->vars[$configFile] = $config;
-                $this->externalConfigCollector?->collect($key, $value);
-            }
-        }
-
-        $this->repeatedLog = ['named' => [], 'index' => []];
-        $this->mainLog = ['named' => [], 'index' => []];
     }
 
-    private function getRootDir(): string
-    {
-        $dir = dirname(__DIR__);
-
-        while (!is_file($dir . '/' . $this->rootFile)) {
-
-            $dir = dirname($dir);
-
-            if (!is_dir($dir)) {
-                throw new LogicException('Cannot auto-detect project dir');
-            }
-        }
-
-        return $dir . '/';
-    }
-
+    /**
+     * @throws RuntimeException
+     */
     #[Override]
     public function get(string $configFile, string $configName, mixed $default = null): mixed
     {
+        if (array_key_exists($configFile, $this->vars) && array_key_exists($configName, $this->vars[$configFile])) {
+            return $this->vars[$configFile][$configName];
+        }
+
+        if (!array_key_exists($configFile, $this->vars)) {
+            $this->loadConfigFile($configFile);
+        }
+
+        return $this->vars[$configFile][$configName] ?? $default;
+    }
+
+    private function loadConfigFile(string $configFile): void
+    {
         if (array_key_exists($configFile, $this->vars)) {
-            return $this->vars[$configFile][$configName] ?? null;
+            return;
         }
 
-        if (in_array($configName, $this->mainLog['named']) || in_array($configName, $this->mainLog['index'])) {
-            $this->repeatedLog['named'][$configFile] = $configName;
-            $this->repeatedLog['index'][] = $configFile . '.' . $configName;
-        } else {
-            $this->mainLog['named'][$configFile] = $configName;
-            $this->mainLog['index'][] = $configFile . '.' . $configName;
+        if (isset($this->loading[$configFile])) {
+            $this->vars[$configFile] = [];
+            return;
         }
 
-        if (count($this->repeatedLog['named']) === count($this->mainLog['named'])
-            || count($this->repeatedLog['index']) === count($this->mainLog['index'])
-        ) {
-            return $default;
-        } else {
-            $configArray = $this->readFile($configFile);
-        }
+        $this->loading[$configFile] = true;
+        $this->vars[$configFile] = [];
 
-        if (array_key_exists($configName, $configArray)) {
+        try {
+            $configArray = $this->fileLoader->load($configFile, $this->configPath, $this);
+
             $this->vars[$configFile] = $configArray;
-            return $configArray[$configName];
-        }
 
-        return $default;
+            foreach ($configArray as $key => $value) {
+                $this->externalConfigCollector?->collect($key, $value);
+            }
+        } finally {
+            unset($this->loading[$configFile]);
+        }
     }
 
-    private function readFile(string $configFile): array
+    #[Override]
+    public function has(string $configFile, string $configName): bool
     {
-        $configPath = $this->configDir . '/' . str_replace('.', '/', $configFile) . '.php';
-
-        if (is_file($configFile) === false) {
-            return [];
+        if (!array_key_exists($configFile, $this->vars)) {
+            $this->loadConfigFile($configFile);
         }
 
-        $configCollector = new class {
-            public function collect(string $configPath, FileConfig $config): array
-            {
-                return require $configPath;
-            }
-        };
-
-        return $configCollector->collect($configPath, $this);
+        return array_key_exists($configName, $this->vars[$configFile] ?? []);
     }
 
-    private function fakeReadFile(string $configFile): array
+    /**
+     * @return array<string, mixed>
+     */
+    #[Override]
+    public function all(string $configFile): array
     {
-        $configPath = $this->configDir . '/' . str_replace('.', '/', $configFile) . '.php';
+        if (!array_key_exists($configFile, $this->vars)) {
+            $this->loadConfigFile($configFile);
+        }
 
-        $fakeConfig = new class ($this, $this->repeatedLog['named'], $this->vars) {
-            public function __construct(private FileConfig $config, private array $repeatedLog, private array $vars) {}
-            public function get(string $configFile, string $configName, mixed $default = null): mixed
-            {
-                if (in_array($configName, $this->repeatedLog)) {
-                    return $this->vars[$configFile][$configName] ?? $default;
-                }
+        return $this->vars[$configFile] ?? [];
+    }
 
-                return $this->config->get($configFile, $configName, $default);
-            }
+    #[Override]
+    public function getInt(string $configFile, string $configName, int $default = 0): int
+    {
+        $value = $this->get($configFile, $configName, $default);
 
-            public function env(string $key, mixed $default = null, bool $raw = false): mixed
-            {
-                return $this->config->env($key, $default, $raw);
-            }
-        };
+        return is_int($value) ? $value : (int) $value;
+    }
 
-        $configCollector = new class {
-            public function collect(string $configPath, mixed $config): array
-            {
-                return require $configPath;
-            }
-        };
+    #[Override]
+    public function getBool(string $configFile, string $configName, bool $default = false): bool
+    {
+        $value = $this->get($configFile, $configName, $default);
 
-        return $configCollector->collect($configPath, $fakeConfig);
+        return is_bool($value) ? $value : (bool) $value;
+    }
+
+    #[Override]
+    public function getString(string $configFile, string $configName, string $default = ''): string
+    {
+        $value = $this->get($configFile, $configName, $default);
+
+        return is_string($value) ? $value : (string) $value;
+    }
+
+    /**
+     * @param array<mixed> $default
+     * @return array<mixed>
+     */
+    #[Override]
+    public function getArray(string $configFile, string $configName, array $default = []): array
+    {
+        $value = $this->get($configFile, $configName, $default);
+
+        return is_array($value) ? $value : $default;
     }
 
     #[Override]
     public function env(string $key, mixed $default = null, bool $raw = false): mixed
     {
-        $this->env = $this->env + $_ENV;
-
-        $value = $this->env[$key] === null || $this->env[$key] === '' ? $default : $this->env[$key];
-
-        if ($raw) {
-            return $value;
-        }
-
-        return match (true) {
-            'null' === $value => null,
-            'true' === $value => true,
-            'false' === $value => false,
-            is_numeric($value) => intval($value),
-            is_string($value) => $value,
-            default => $default,
-        };
+        return $this->envResolver->get($key, $default, $raw);
     }
 
     #[Override]
     public function path(string $dir = ''): string
     {
         return rtrim($this->projectRootDir, '/') . '/' . trim($dir, '/');
+    }
+
+    public function configDir(): string
+    {
+        return $this->configDir;
+    }
+
+    public function rootFile(): string
+    {
+        return $this->rootFile;
+    }
+
+    public function clearCache(): bool
+    {
+        if ($this->cacheDir === null) {
+            return false;
+        }
+
+        $cache = new ConfigCache($this->cacheDir);
+        return $cache->clear();
+    }
+
+    public function warmup(): void
+    {
+        if ($this->useCache && $this->cacheDir !== null) {
+            $cache = new ConfigCache($this->cacheDir);
+
+            if ($cache->has()) {
+                return;
+            }
+        }
+
+        $configs = $this->fileLoader->loadAll($this->configPath, $this);
+
+        foreach ($configs as $configName => $config) {
+            if (!array_key_exists($configName, $this->vars)) {
+                $this->vars[$configName] = $config;
+
+                foreach ($config as $key => $value) {
+                    $this->externalConfigCollector?->collect($key, $value);
+                }
+            }
+        }
+
+        if ($this->useCache && $this->cacheDir !== null) {
+            $cache = new ConfigCache($this->cacheDir);
+            $cache->save($this->vars);
+        }
     }
 }
