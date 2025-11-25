@@ -111,7 +111,7 @@ final class ConfigFileLoader
          */
         $loader = static function (string $filePath, mixed $config): mixed {
             /** @var mixed $result */
-            $result = require $filePath;
+            $result = require $filePath; // NOSONAR
             return $result;
         };
 

@@ -31,7 +31,7 @@ final class ConfigCache
         }
 
         /** @var mixed $data */
-        $data = require $this->cacheFile;
+        $data = require $this->cacheFile; // NOSONAR
 
         if (!is_array($data)) {
             throw new RuntimeException(sprintf('Invalid cache file format in "%s"', $this->cacheFile));
