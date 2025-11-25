@@ -109,4 +109,21 @@ class EnvironmentResolverTest extends TestCase
 
         $this->assertEquals('default', $value);
     }
+
+    #[Test]
+    public function it_should_not_leak_memory_on_multiple_calls(): void
+    {
+        $_ENV['TEST_MEMORY'] = 'test_value';
+
+        $memoryBefore = memory_get_usage();
+
+        for ($i = 0; $i < 10000; $i++) {
+            $this->resolver->get('TEST_MEMORY');
+        }
+
+        $memoryAfter = memory_get_usage();
+        $memoryDiff = $memoryAfter - $memoryBefore;
+
+        $this->assertLessThan(100000, $memoryDiff, 'Memory leak detected: ' . $memoryDiff . ' bytes');
+    }
 }
