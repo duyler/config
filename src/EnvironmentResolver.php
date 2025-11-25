@@ -9,23 +9,21 @@ use Dotenv\Dotenv;
 final class EnvironmentResolver
 {
     /** @var array<string, mixed> */
-    private array $env;
+    private array $dotenvVars;
 
     public function __construct(string $projectRootDir)
     {
         $dotenv = Dotenv::createImmutable($projectRootDir);
-        $this->env = $dotenv->safeLoad();
+        $this->dotenvVars = $dotenv->safeLoad();
     }
 
     public function get(string $key, mixed $default = null, bool $raw = false): mixed
     {
-        $this->env = $this->env + $_ENV;
+        $value = $_ENV[$key] ?? $this->dotenvVars[$key] ?? null;
 
-        if (!array_key_exists($key, $this->env) || $this->env[$key] === null || $this->env[$key] === '') {
+        if ($value === null || $value === '') {
             return $default;
         }
-
-        $value = $this->env[$key];
 
         if ($raw || !is_string($value)) {
             return $value;
