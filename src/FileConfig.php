@@ -51,6 +51,23 @@ final class FileConfig implements ConfigInterface
                 return;
             }
         }
+
+        $this->loadAllConfigs();
+    }
+
+    private function loadAllConfigs(): void
+    {
+        $configs = $this->fileLoader->loadAll($this->configPath, $this);
+
+        foreach ($configs as $configName => $config) {
+            if (!array_key_exists($configName, $this->vars)) {
+                $this->vars[$configName] = $config;
+
+                foreach ($config as $key => $value) {
+                    $this->externalConfigCollector?->collect($key, $value);
+                }
+            }
+        }
     }
 
     /**
@@ -198,17 +215,7 @@ final class FileConfig implements ConfigInterface
             }
         }
 
-        $configs = $this->fileLoader->loadAll($this->configPath, $this);
-
-        foreach ($configs as $configName => $config) {
-            if (!array_key_exists($configName, $this->vars)) {
-                $this->vars[$configName] = $config;
-
-                foreach ($config as $key => $value) {
-                    $this->externalConfigCollector?->collect($key, $value);
-                }
-            }
-        }
+        $this->loadAllConfigs();
 
         if ($this->useCache && $this->cacheDir !== null) {
             $cache = new ConfigCache($this->cacheDir);
